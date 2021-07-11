@@ -6,7 +6,6 @@ const TaskController = {
     add: async (req, res) => {
 
         let schema = yup.object().shape({
-            _id: yup.number().required(),
             name: yup.string().required(),
             date: yup.date().default(),
             description: yup.string()
@@ -18,7 +17,10 @@ const TaskController = {
             })
         }
 
-        const { _id, name, date, description } = req.body;
+        const numberOfTasks = await Task.countDocuments({}).exec();
+
+        const _id = numberOfTasks + 1;
+        const { name, date, description } = req.body;
         const data = { _id, name, date, description };
 
         await Task.create(data, (error) => {
@@ -44,41 +46,41 @@ const TaskController = {
 
     update: async (req, res) => {
 
-        const taskId = req.params.id;
+        try {
+            const taskId = req.params.id;
 
-        const updatedTask = {
-            name: req.body.name,
-            date: req.body.date,
-            description: req.body.description
+
+            const updatedTask = {
+                name: req.body.name,
+                date: req.body.date,
+                description: req.body.description
+            }
+
+
+            const updateTask = async (attribute, value) => {
+                const attr = attribute
+                return await Task.findOneAndUpdate({_id: taskId}, {$set : { [attr] : value }})
+            }
+
+            if( updatedTask.name ) {
+                await updateTask("name", updatedTask.name);
+            }
+
+            if( updatedTask.date ) {
+                await updateTask("date", updatedTask.date);
+            }
+
+            if( updatedTask.description ) {
+                await updateTask("description", updatedTask.description);
+            }
+
+            const result = await Task.find({_id: taskId});
+
+            return res.status(202).json({ message: 'Success', result}).redirect('/');
+
+        } catch (error) {
+            return res.status(400).json({ message: error.message });
         }
-
-        if(updatedTask.name) {
-            await Task.findOneAndUpdate({_id: taskId}, {$set : {"name" : updatedTask.name}}, (err) => {
-                if (err) {
-                    res.status(400).json({ message: err.message });
-                }
-            })
-        }
-
-
-        if(updatedTask.date){
-            await Task.findOneAndUpdate({_id: taskId}, {$set : {"date" : updatedTask.date}}, (err) => {
-                if (err) {
-                    res.status(400).json({ message: err.message });
-                }
-            })
-        }
-
-        if(updatedTask.description){
-            await Task.findOneAndUpdate({_id: taskId}, {$set : {"description" : updatedTask.description}}, (err) => {
-                if (err) {
-                    res.status(400).json({ message: err.message });
-                }
-            })
-        }
-            
-        return res.status(202).json({ message: 'Success'}).redirect('/')
-
     },
 
     delete: async (req, res) => {
